@@ -1,20 +1,21 @@
-const cards = ['fa-diamond', 'fa-paper-plane-o', 'fa-anchor', 'fa-bolt', 'fa-cube', 'fa-leaf', 'fa-bicycle', 'fa-bomb'];
-const deck = cards.concat(cards);
-const deckUl = document.querySelector('.deck');
-let deckUlLis = '';
+const cardIcons = ['fa-diamond', 'fa-paper-plane-o', 'fa-anchor', 'fa-bolt', 'fa-cube', 'fa-leaf', 'fa-bicycle', 'fa-bomb'];
+const deck = cardIcons.concat(cardIcons);
 let isOpen = [];
 let moves = 0;
 let stars = '★★★';
+let beginTime;
+
+// DOM selectors
+const deckUl = document.querySelector('.deck');
 const movesDisplay = document.querySelector('.moves');
 const starsDisplay = document.querySelector('.stars');
 const restartButton = document.querySelector('.restart');
 const timeDisplay = document.querySelector('.time');
-let beginTime;
-let gameOver;
+
 
 // Shuffle function from http://stackoverflow.com/a/2450976
 function shuffle(array) {
-    var currentIndex = array.length,
+    let currentIndex = array.length,
         temporaryValue, randomIndex;
 
     while (currentIndex !== 0) {
@@ -28,30 +29,14 @@ function shuffle(array) {
     return array;
 }
 
-function createCardsHtml(icon) {
-    const listItem = (`<li class="card" onclick="respondToClick(this)"><i class="fa ${icon}"></i></li>`);
-    deckUlLis += listItem;
+function createLi(icon) {
+    return `<li class="card" onclick="validateClick(this)"><i class="fa ${icon}"></i></li>`;
 }
 
 function openCard(li) {
     li.classList.add('open', 'show');
     isOpen.push(li);
-}
-
-function aMatch() {
-    isOpen[0].classList.add('match');
-    isOpen[1].classList.add('match');
-    isOpen = [];
-    if (document.getElementsByClassName('match').length === 16) {
-        gameOver = true;
-        endGame();
-    }
-}
-
-function noMatch() {
-    isOpen[0].classList.remove('open', 'show');
-    isOpen[1].classList.remove('open', 'show');
-    isOpen = [];
+    countMoves();
 }
 
 function countMoves() {
@@ -71,10 +56,35 @@ function removeStars(moves) {
     starsDisplay.innerHTML = stars;
 }
 
-function endGame() {
-        window.alert(`Congratulations, all pairs found!
+/**
+ * Close cards that don't match.
+ */
+function noMatch() {
+    isOpen[0].classList.remove('open', 'show');
+    isOpen[1].classList.remove('open', 'show');
+    isOpen = [];
+}
+
+/**
+ * Mark matched cards until the last pairing.
+ */
+function aMatch() {
+    isOpen[0].classList.add('match');
+    isOpen[1].classList.add('match');
+    isOpen = [];
+    // at the last pairing the game is over
+    if (document.getElementsByClassName('match').length === 16) {
+        endGame(getTimeString(getElapsedTime()));
+    }
+}
+
+/**
+ * Display game stats and call restart function.
+ */
+function endGame(time) {
+    window.alert(`Congratulations, all pairs found!
                 Moves: ${moves}
-                Time: ${clockFace(getElapsedTime())}
+                Time: ${time}
                 Stars: ${stars}`);
     restart();
 }
@@ -83,23 +93,7 @@ function restart() {
     window.location.reload();
 }
 
-function respondToClick(li) {
-
-    if ((!isOpen.includes(li)) && (isOpen.length < 2)) {
-        if (!beginTime) {
-            beginTime = new Date().getTime();
-        }
-        openCard(li);
-        countMoves();
-    }
-
-    if (isOpen.length === 2) {
-        (isOpen[0].innerHTML === isOpen[1].innerHTML) ? aMatch() : window.setTimeout(noMatch, 900);
-    }
-
-}
-
-function clockFace(elapsedTime) {
+function getTimeString(elapsedTime) {
     let elapsedSec = Math.floor((elapsedTime / 1000) % 60);
     let elapsedMin = Math.round(((elapsedTime / 1000) - 30) / 60);
     return elapsedMin + ':' + zeroFill(elapsedSec, 2);
@@ -115,18 +109,37 @@ function zeroFill(number, width) {
     while (res.length < width) {
         res = '0' + res;
     }
-    return res;
+    return res; // as a String
+}
+
+/**
+ * Checks if the card (li element) is already open and doesn't allow for more than 2 cards to be opened at a time.
+ */
+function validateClick(li) {
+
+    if ((!isOpen.includes(li)) && (isOpen.length < 2)) {
+        // Register time after first valid click.
+        if (!beginTime) {
+            beginTime = new Date().getTime();
+        }
+        openCard(li);
+    }
+
+    if (isOpen.length === 2) {
+        // Determine how to proceed after 2nd valid click.
+        (isOpen[0].innerHTML === isOpen[1].innerHTML) ? aMatch() : window.setTimeout(noMatch, 900);
+    }
+
 }
 
 shuffle(deck);
 
-deck.forEach(createCardsHtml);
-deckUl.innerHTML = deckUlLis;
+deckUl.innerHTML = deck.map(createLi).join('');
 
 restartButton.addEventListener('click', restart);
 
 setInterval(function () {
-    if (beginTime || gameOver) {
-        timeDisplay.innerHTML = clockFace(getElapsedTime());
+    if (beginTime) {
+        timeDisplay.innerHTML = getTimeString(getElapsedTime());
     }
 }, 1000);
